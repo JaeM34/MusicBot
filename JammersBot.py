@@ -78,7 +78,7 @@ class JammersBot(commands.Bot):
 
     # Shuffles the queue
     async def shuffle_queue(self):
-        random(self.music_queue)
+        random.shuffle(self.music_queue)
 
     # Joins a channel and sets voice_client to connected voice
     async def join_voice_channel(self, channel):
