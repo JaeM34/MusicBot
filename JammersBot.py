@@ -107,6 +107,12 @@ def convert_to_yt(str):
     print(str)
     return str
 
+# Gets the title of the given YouTube url
+def get_youtube_title(url):
+    html = urllib.request.urlopen(url=url)
+    title_list = re.findall(r"\"title\" content=\"(.*?)\">", html.read().decode())
+    return title_list[0]
+
 @client.command()
 async def skip(ctx):
     await client.stop_audio()
