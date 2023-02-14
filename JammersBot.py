@@ -113,7 +113,6 @@ def convert_to_yt(str):
     html = urllib.request.urlopen("https://www.youtube.com/results?search_query=" + str)
     videos = re.findall(r"watch\?v=(\S{11})", html.read().decode())
     str = ("https://youtube.com/watch?v=" + videos[0])
-    print(str)
     return str
 
 # Gets the title of the given YouTube url
@@ -142,14 +141,14 @@ async def queue(ctx):
     if(client.current_url is ""):
         ctx.send("Nothing is currently playing")
         return
-    str = "Now playing: " + get_youtube_title(url=client.current_url) + "\n"
+    url = "Now playing: " + get_youtube_title(url=client.current_url) + "\n"
     count = 1
     for song in client.music_queue:
-        str = str(count) + ") "
-        str += get_youtube_title(url=song)
-        str += "\n"
+        url += str(count) + ") "
+        url += get_youtube_title(url=song)
+        url += "\n"
         count += 1
-    await ctx.send(str)
+    await ctx.send(url)
 
 @client.command()
 async def remove(ctx, arg):
@@ -157,6 +156,4 @@ async def remove(ctx, arg):
     if(type(pos) is int):
         client.music_queue.remove(pos-1)
 
-
-client.run('BOT TOKEN GOES HERE')
-
+client.run("API TOKEN HERE")
