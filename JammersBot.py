@@ -15,6 +15,7 @@ class JammersBot(commands.Bot):
     # Variables
     music_queue = []
     voice_client = None
+    current_url = ""
 
     # Options for the YouTube overlords
     ydl_opts = {
@@ -42,14 +43,21 @@ class JammersBot(commands.Bot):
     # bot is not playing, pop the url then play the audio
     @tasks.loop(seconds=2)
     async def audio_queue(self):
-        if(self.voice_client is not None and not self.voice_client.is_playing() and len(self.music_queue) is not 0):
-            try:
-                os.remove(os.path.join(os.getcwd(), "song.mp3"))
-            except:
-                pass
-            with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
-                ydl.download([self.music_queue.pop()])
-            await self.play_audio()
+        # Whenever client is in a voice channel and is playing, queue should be checked
+        if(self.voice_client is not None and not self.voice_client.is_playing()):
+            # When the music queue is not empty, pop the next song and play the audio
+            if(len(self.music_queue) is not 0):
+                try:
+                    os.remove(os.path.join(os.getcwd(), "song.mp3"))
+                except:
+                    pass
+                with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+                    self.current_url = self.music_queue.pop()
+                    ydl.download([self.current_url])
+                await self.play_audio()
+            # When the music queue is empty, set the current song to empty
+            else:
+                self.current_url = ""
 
     # Given voice_client, play the audio that is currently downloaded
     # under "music.mp3"
@@ -62,6 +70,7 @@ class JammersBot(commands.Bot):
     # Used to stop the current track
     async def stop_audio(self):
         self.voice_client.stop()
+        self.current_url = ""
 
     # Clears the queue
     async def clear_queue(self):
@@ -130,11 +139,14 @@ async def shuffle(ctx):
 
 @client.command()
 async def queue(ctx):
-    str = ""
+    if(client.current_url is ""):
+        ctx.send("Nothing is currently playing")
+        return
+    str = "Now playing: " + get_youtube_title(url=client.current_url) + "\n"
     count = 1
     for song in client.music_queue:
-        str = (str + "" + 1)
-        str += song
+        str = str(count) + ") "
+        str += get_youtube_title(url=song)
         str += "\n"
         count += 1
     await ctx.send(str)
