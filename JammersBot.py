@@ -216,4 +216,4 @@ async def remove(ctx, arg):
             c += 1
         client.music_queue.remove(url)
 
-client.run('MTA3MjIyNzU4NTIzMDExODk3NA.G081gU.wTNYsEpiFk74pDYsDlKyE0zVbis4buPRjq8m8s') #MusicBot
+client.run('API TOKEN') #MusicBot
