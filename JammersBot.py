@@ -15,7 +15,10 @@ class JammersBot(commands.Bot):
     # Variables
     music_queue = []
     voice_client = None
+    current_txt_channel = None
     current_url = ""
+    position_of_queue = 0
+    loop_type = 0
 
     # Options for the YouTube overlords
     ydl_opts = {
@@ -51,8 +54,15 @@ class JammersBot(commands.Bot):
                     os.remove(os.path.join(os.getcwd(), "song.mp3"))
                 except:
                     pass
-                with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+                # Option based on loop status
+                # If loop_type is 0, then the queue is not looping and will pop the next song
+                # else if the loop_type is 1, then the queue is looping
+                # else, will just loop the current song
+                if(self.loop_type is 0):
                     self.current_url = self.music_queue.pop()
+                elif(self.loop_type is 1):
+                    self.position_of_queue = (self.position_of_queue + 1) % (len(self.music_queue))
+                with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
                     ydl.download([self.current_url])
                 await self.play_audio()
             # When the music queue is empty, set the current song to empty
@@ -66,6 +76,10 @@ class JammersBot(commands.Bot):
         sound.export('realsong.wav', format = "wav", parameters = ["-vol", "150"])
         audio = FFmpegPCMAudio('realsong.wav')
         self.voice_client.play(audio)
+    
+    # Sends a message to the currently set text channel
+    async def send_message(self, msg):
+        await self.current_txt_channel.send(msg)
 
     # Used to stop the current track
     async def stop_audio(self):
@@ -79,6 +93,17 @@ class JammersBot(commands.Bot):
     # Shuffles the queue
     async def shuffle_queue(self):
         random.shuffle(self.music_queue)
+    
+    # Shifts through the loop_type
+    async def swap_loop_type(self):
+        self.loop_type = (self.loop_type + 1) % 3
+        c = 0
+        while(True):
+            if(c is self.position_of_queue):
+                break
+            self.music_queue.pop()
+            c += 1
+        self.position_of_queue = 0
 
     # Joins a channel and sets voice_client to connected voice
     async def join_voice_channel(self, channel):
@@ -101,14 +126,18 @@ client = JammersBot(command_prefix = "!", intents = intents)
 
 @client.command()
 async def play(ctx, *, url):
-    url = convert_to_yt(url)
-    await ctx.send('Queueing ' + url)
-    channel = ctx.author.voice.channel
-    await client.join_voice_channel(channel)
+    vc = ctx.author.voice.channel
+    if(vc is None):
+        await client.send_message("You must be connected to a voice channel to queue a song")
+        return
+    await client.join_voice_channel(vc)
+    url = await convert_to_yt(url)
+    client.current_txt_channel = (ctx.channel)
+    await client.send_message('Adding ' + await get_youtube_title(url) + " to the queue")
     client.music_queue.append(url)
 
 # Converts the given string to a youtube url
-def convert_to_yt(str):
+async def convert_to_yt(str):
     str = re.sub(" ", "+", str)
     html = urllib.request.urlopen("https://www.youtube.com/results?search_query=" + str)
     videos = re.findall(r"watch\?v=(\S{11})", html.read().decode())
@@ -116,7 +145,7 @@ def convert_to_yt(str):
     return str
 
 # Gets the title of the given YouTube url
-def get_youtube_title(url):
+async def get_youtube_title(url):
     html = urllib.request.urlopen(url=url)
     title_list = re.findall(r"\"title\" content=\"(.*?)\">", html.read().decode())
     return title_list[0]
@@ -124,36 +153,59 @@ def get_youtube_title(url):
 @client.command()
 async def skip(ctx):
     await client.stop_audio()
-    await ctx.send('Stopping audio')
+    await client.send_message('Skipping to the next song')
 
 @client.command()
 async def clear(ctx):
     await client.clear_queue()
-    await ctx.send('Cleared queue')
+    await client.send_message('All songs have been removed from the queue')
 
 @client.command()
 async def shuffle(ctx):
     await client.shuffle_queue()
-    await ctx.send('Shuffled queue')
+    await client.send_message('Shuffling the queue')
+
+@client.command()
+async def loop(ctx):
+    await client.swap_loop_type()
+    if(client.loop_type is 0):
+        client.send_message("The queue is no longer on loop")
+    elif(client.loop_type is 1):
+        await client.send_message("The queue is now on loop")
+    else:
+        await client.send_message("The current song is now on loop")
 
 @client.command()
 async def queue(ctx):
     if(client.current_url is ""):
         ctx.send("Nothing is currently playing")
         return
-    url = "Now playing: " + get_youtube_title(url=client.current_url) + "\n"
+    url = "Currently playing: " + await get_youtube_title(url=client.current_url) + "\n"
     count = 1
     for song in client.music_queue:
         url += str(count) + ") "
-        url += get_youtube_title(url=song)
+        url += await get_youtube_title(url=song)
         url += "\n"
         count += 1
-    await ctx.send(url)
+    await client.send_message(url)
 
 @client.command()
 async def remove(ctx, arg):
-    pos = int(arg)
-    if(type(pos) is int):
-        client.music_queue.remove(pos-1)
+    if(type(arg) is int):
+        if(int(arg) < len(client.music_queue)):
+            await client.send_message("Removed " + get_youtube_title(client.music_queue.pop(int(arg)-1)))
+        else:
+            await client.send_message("Not a valid position in the queue")
+    else:
+        c = 0
+        for song in client.music_queue:
+            title = await get_youtube_title(song)
+            if(arg in title):
+                break
+            elif(c is len(client.music_queue)-1):
+                await client.send_message("Song not found in queue")
+                return
+            c += 1
+        client.music_queue.remove(c)
 
-client.run("API TOKEN HERE")
+client.run('API KEY GOES LIKE HERE')
