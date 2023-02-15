@@ -72,14 +72,17 @@ class JammersBot(commands.Bot):
     # Given voice_client, play the audio that is currently downloaded
     # under "music.mp3"
     async def play_audio(self):
-        sound = AudioSegment.from_mp3('song.mp3')
-        sound.export('realsong.wav', format = "wav", parameters = ["-vol", "150"])
-        audio = FFmpegPCMAudio('realsong.wav')
+        #sound = AudioSegment.from_mp3('song.mp3')
+        #sound.export('realsong.wav', format = "wav", parameters = ["-vol", "150"])
+        audio = FFmpegPCMAudio('song.mp3')
         self.voice_client.play(audio)
+        print('Playing song')
+        msg = "Now playing: " + await get_youtube_title(self.current_url)
+        await self.send_message(msg=msg)
     
     # Sends a message to the currently set text channel
     async def send_message(self, msg):
-        await self.current_txt_channel.send(msg)
+        await self.current_txt_channel.send("> " + msg)
 
     # Used to stop the current track
     async def stop_audio(self):
@@ -191,21 +194,26 @@ async def queue(ctx):
 
 @client.command()
 async def remove(ctx, arg):
-    if(type(arg) is int):
-        if(int(arg) < len(client.music_queue)):
-            await client.send_message("Removed " + get_youtube_title(client.music_queue.pop(int(arg)-1)))
+    try:
+        print("HI")
+        if(int(arg)-1 < len(client.music_queue)):
+            print("HII")
+            pos = int(arg) - 1
+            await client.send_message("Removed " + get_youtube_title(client.music_queue.pop(pos)))
         else:
             await client.send_message("Not a valid position in the queue")
-    else:
+    except:
         c = 0
+        url = ""
         for song in client.music_queue:
             title = await get_youtube_title(song)
-            if(arg in title):
+            if(str.lower(arg) in str.lower(title)):
+                url = song
                 break
             elif(c is len(client.music_queue)-1):
                 await client.send_message("Song not found in queue")
                 return
             c += 1
-        client.music_queue.remove(c)
+        client.music_queue.remove(url)
 
-client.run('API KEY GOES LIKE HERE')
+client.run('MTA3MjIyNzU4NTIzMDExODk3NA.G081gU.wTNYsEpiFk74pDYsDlKyE0zVbis4buPRjq8m8s') #MusicBot
