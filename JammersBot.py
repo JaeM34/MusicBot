@@ -62,6 +62,7 @@ class JammersBot(commands.Bot):
                     self.current_url = self.music_queue.pop()
                 elif(self.loop_type is 1):
                     self.position_of_queue = (self.position_of_queue + 1) % (len(self.music_queue))
+                    self.current_url = self.music_queue[self.position_of_queue]
                 with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
                     ydl.download([self.current_url])
                 await self.play_audio()
